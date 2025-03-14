@@ -134,3 +134,33 @@ class Discussion(Base):
     replies = relationship("Discussion", 
                           backref=backref("parent", remote_side=[id]),
                           cascade="all, delete-orphan")
+
+class Exam(Base):
+    __tablename__ = "exams"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(100), nullable=False)
+    description = Column(Text)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"))
+    created_by = Column(Integer, ForeignKey("users.id"))
+    time_limit = Column(Integer)  # in minutes
+    total_points = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    course = relationship("Course")
+    creator = relationship("User", foreign_keys=[created_by])
+    exam_questions = relationship("ExamQuestion", back_populates="exam", cascade="all, delete-orphan")
+    
+class ExamQuestion(Base):
+    __tablename__ = "exam_questions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    exam_id = Column(Integer, ForeignKey("exams.id", ondelete="CASCADE"))
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"))
+    order = Column(Integer, nullable=False)  # Order in which questions appear
+    points = Column(Integer, nullable=False, default=1)  # Points for this question
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    exam = relationship("Exam", back_populates="exam_questions")
+    question = relationship("Question")

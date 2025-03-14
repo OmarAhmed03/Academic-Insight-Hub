@@ -14,6 +14,8 @@ A comprehensive educational platform for course management, question banks, and 
 - **Student Progress Tracking**: Monitor student performance and progress
 - **Import/Export**: Import and export questions in CSV format
 - **AI-Powered Question Analysis**: Analyze questions using LLM to rate difficulty and suggest improvements based on learning outcomes
+- **AI Question Generator**: Generate high-quality questions automatically using Groq or DeepSeek models
+- **Exam Builder**: Create exams by selecting questions from the database or auto-generating them
 
 ## Installation
 
@@ -79,6 +81,8 @@ After initializing the database, you can log in with the following credentials:
   - `question_attempt.py`: Question attempt interface
   - `user_management.py`: User and role management
   - `question_analysis.py`: AI-powered question analysis
+  - `question_generator.py`: AI-powered question generation
+  - `exam_builder.py`: Create and manage exams
 
 ## User Roles
 
@@ -126,19 +130,44 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - SQLAlchemy for the ORM
 - Plotly for data visualization 
 
-## AI-Powered Question Analysis
+## AI-Powered Features
 
-The application includes an AI-powered question analysis feature that uses the Groq API with the Deepseek R1 model to:
+The application includes several AI-powered features:
+
+### Question Analysis
+
+Uses the Groq API with the LLaMA-3 model to:
 
 1. Rate the difficulty of questions on a scale of 1-5
 2. Suggest improvements to questions based on the course's Intended Learning Outcomes (ILOs)
 3. Help professors create better-aligned questions
 
-To use this feature:
+### AI Question Generator
 
-1. Obtain a Groq API key from [https://console.groq.com/](https://console.groq.com/)
+Automatically generates high-quality educational questions based on chapter content and learning outcomes:
+
+1. Supports multiple LLM models through Groq, including:
+   - LLaMA-3 (8B and 70B variants)
+   - DeepSeek (6.7B)
+   - Mixtral (8x7B)
+2. Generate questions of various types (Multiple Choice, True/False, Short Answer, Essay)
+3. Customizable difficulty levels and question counts
+4. Generated questions can be saved directly to the database
+
+### Exam Builder
+
+Create comprehensive exams from existing questions:
+
+1. Filter questions by course, chapter, difficulty, and type
+2. Auto-generate exams with specified question counts and parameters
+3. Customize point values for each question
+4. Reorder questions to structure the exam
+5. Save exams for later use
+
+To use these AI features:
+
+1. Obtain an API key from Groq: [https://console.groq.com/](https://console.groq.com/)
 2. Add your API key to the `.env` file
-3. Navigate to the "Question Analysis" page in the application
-4. Select an existing question to analyze or create a new one
+3. Navigate to the respective pages in the application
 
-This feature is available to users with Professor, Teaching Assistant, or Admin roles. 
+These features are available to users with Professor or Admin roles. 

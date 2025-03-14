@@ -137,7 +137,7 @@ try:
                 st.markdown("### Add Content")
                 add_option = st.radio(
                     "What would you like to add?",
-                    ["Course", "Chapter", "Question", "Question Analysis"],
+                    ["Course", "Chapter", "Question", "Question Analysis", "AI Question Generator", "Exam Builder"],
                     horizontal=True,
                     key="staff_add_option"
                 )
@@ -154,6 +154,12 @@ try:
                 elif add_option == "Question Analysis":
                     import pages.question_analysis as qa_page
                     qa_page.show_question_analysis()
+                elif add_option == "AI Question Generator":
+                    import pages.question_generator as qg_page
+                    qg_page.show_question_generator()
+                elif add_option == "Exam Builder":
+                    import pages.exam_builder as eb_page
+                    eb_page.show_exam_builder()
             
             # Manage Profile Tab Content
             with current_tab[2]:

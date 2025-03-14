@@ -1,9 +1,10 @@
 from database import get_db, init_db
-from models import Role, User, UserRole
+from models import Role, User, UserRole, Base, Exam, ExamQuestion
 import json
 import logging
 from utils import hash_password
 from datetime import datetime
+import sqlalchemy as sa
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -155,20 +156,82 @@ def create_admin_user():
     else:
         logger.info("Admin user already exists")
 
-def main():
-    """Initialize the database"""
-    logger.info("Initializing database...")
+def run_migrations():
+    """Run database migrations to update schema"""
+    logger.info("Running database migrations...")
     
-    # Initialize database tables
-    init_db()
-    
-    # Initialize roles
-    init_roles()
-    
-    # Create admin user
-    create_admin_user()
-    
-    logger.info("Database initialization complete")
+    try:
+        # Get database connection
+        db = next(get_db())
+        
+        # Check if exams table exists
+        inspector = sa.inspect(db.bind)
+        has_exams_table = inspector.has_table("exams")
+        
+        if not has_exams_table:
+            logger.info("Creating 'exams' and 'exam_questions' tables...")
+            
+            # Create exams table
+            Base.metadata.tables["exams"].create(db.bind)
+            logger.info("'exams' table created successfully")
+            
+            # Create exam_questions table
+            Base.metadata.tables["exam_questions"].create(db.bind)
+            logger.info("'exam_questions' table created successfully")
+            
+            # Update professor and admin roles to add exam management permissions
+            professor_role = db.query(Role).filter_by(name="professor").first()
+            admin_role = db.query(Role).filter_by(name="admin").first()
+            
+            if professor_role:
+                # Update professor permissions
+                permissions = json.loads(professor_role.permissions)
+                permissions.update({
+                    "create_exam": True,
+                    "edit_exam": True,
+                    "delete_exam": True,
+                    "ai_question_generator": True
+                })
+                professor_role.permissions = json.dumps(permissions)
+                logger.info("Updated professor role permissions to include exam management")
+            
+            if admin_role:
+                # Update admin permissions
+                permissions = json.loads(admin_role.permissions)
+                permissions.update({
+                    "create_exam": True,
+                    "edit_exam": True,
+                    "delete_exam": True,
+                    "ai_question_generator": True
+                })
+                admin_role.permissions = json.dumps(permissions)
+                logger.info("Updated admin role permissions to include exam management")
+            
+            db.commit()
+            logger.info("Role permissions updated successfully")
+        
+    except Exception as e:
+        logger.error(f"Error running migrations: {str(e)}")
+        # Continue with other init tasks even if migrations fail
+
+# Main initialization function
+def initialize_database():
+    """Initialize database with default data"""
+    try:
+        # Run migrations
+        run_migrations()
+        
+        # Initialize roles
+        init_roles()
+        
+        # Initialize default admin user
+        create_admin_user()
+        
+        logger.info("Database initialized successfully!")
+        
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        raise
 
 if __name__ == "__main__":
-    main()
+    initialize_database()

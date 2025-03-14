@@ -4,6 +4,7 @@ import os
 from sqlalchemy.pool import QueuePool
 import logging
 import streamlit as st
+from sqlalchemy.ext.declarative import declarative_base
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +21,8 @@ engine = create_engine(
     max_overflow=20,
     pool_timeout=30,
     pool_recycle=3600,  # Recycle connections after 1 hour
-    connect_args={'check_same_thread': False} if DATABASE_URL.startswith('sqlite') else {}
+    connect_args={'check_same_thread': False} if DATABASE_URL.startswith('sqlite') else {},
+    echo=False  # Set to True for debugging SQL queries
 )
 
 # Create session factory
@@ -55,13 +57,21 @@ def get_db_context():
         db.close()
 
 def init_db():
-    """Initialize the database with tables"""
-    # Use Streamlit's session state to track if DB has been initialized
-    if 'db_initialized' not in st.session_state:
-        from models import Base
+    """Initialize database tables and default data."""
+    from models import Base
+    
+    # Create tables
+    if not st.session_state.get("db_initialized", False):
+        logger.info("Creating database tables if they don't exist...")
         Base.metadata.create_all(bind=engine)
-        logger.info("Database initialized with tables")
-        # Set flag to prevent repeated initialization
-        st.session_state['db_initialized'] = True
+        st.session_state["db_initialized"] = True
+        
+        # Import and run database initialization
+        try:
+            import init_db
+            init_db.initialize_database()
+            logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing database: {str(e)}")
     else:
-        logger.debug("Database already initialized, skipping")
+        logger.debug("Database already initialized")
