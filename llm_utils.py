@@ -3,32 +3,21 @@ import logging
 import json
 from typing import Dict, Any, Optional, Tuple, List
 from groq import Groq
-from dotenv import load_dotenv
 import streamlit as st
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_groq_client():
+def get_groq_client() -> Groq:
     """Get Groq client using API key from Streamlit secrets."""
-    return Groq(api_key=st.secrets["groq_api_key"])
-
-# Initialize Groq client
-# Try to get API key from environment variable first
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-try:
-    # Initialize client - if GROQ_API_KEY is None, it will use the GROQ_API_KEY environment variable
-    # that might be set outside of the .env file
-    client = Groq(api_key=GROQ_API_KEY)
-    logger.info("Groq client initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize Groq client: {str(e)}")
-    client = None
+    try:
+        client = Groq(api_key=st.secrets["groq_api_key"])
+        logger.info("Groq client initialized successfully")
+        return client
+    except Exception as e:
+        logger.error(f"Failed to initialize Groq client: {str(e)}")
+        return None
 
 def analyze_question(
     question_content: str, 
@@ -52,9 +41,11 @@ def analyze_question(
     Returns:
         Tuple containing (difficulty_rating, improvement_suggestions)
     """
+    # Get client for this request
+    client = get_groq_client()
     if not client:
         logger.error("Groq client not initialized. Cannot analyze question.")
-        return None, "Error: Groq client not initialized. Please check your API key."
+        return None, "Error: Groq client not initialized. Please check your API key configuration."
     
     try:
         # Construct the prompt
@@ -160,6 +151,8 @@ def generate_questions(
     Returns:
         List of dictionaries with generated questions
     """
+    # Get client for this request
+    client = get_groq_client()
     if not client:
         logger.error("Groq client not initialized. Cannot generate questions.")
         return []
