@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
 import os
 from sqlalchemy.pool import QueuePool
 import logging
@@ -10,34 +10,21 @@ from sqlalchemy.ext.declarative import declarative_base
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Database URL - can be configured via environment variable
-DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///abdalla.db')
+# Create database engine using Streamlit secrets
+engine = create_engine(st.secrets["database_url"])
 
-# Create engine with connection pooling
-engine = create_engine(
-    DATABASE_URL,
-    poolclass=QueuePool,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,
-    pool_recycle=3600,  # Recycle connections after 1 hour
-    connect_args={'check_same_thread': False} if DATABASE_URL.startswith('sqlite') else {},
-    echo=False  # Set to True for debugging SQL queries
-)
-
-# Create session factory
+# Create sessionmaker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create scoped session for thread safety
 ScopedSession = scoped_session(SessionLocal)
 
-def get_db():
-    """
-    Get a database session.
-    Usage:
-        db = next(get_db())
-    """
-    db = ScopedSession()
+# Create Base class for declarative models
+Base = declarative_base()
+
+def get_db() -> Session:
+    """Get database session."""
+    db = SessionLocal()
     try:
         yield db
     finally:

@@ -4,6 +4,7 @@ import json
 from typing import Dict, Any, Optional, Tuple, List
 from groq import Groq
 from dotenv import load_dotenv
+import streamlit as st
 
 # Load environment variables
 load_dotenv()
@@ -11,6 +12,10 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def get_groq_client():
+    """Get Groq client using API key from Streamlit secrets."""
+    return Groq(api_key=st.secrets["groq_api_key"])
 
 # Initialize Groq client
 # Try to get API key from environment variable first
