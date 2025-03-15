@@ -9,6 +9,7 @@ import os
 from groq import Groq
 import json
 from analysis_display import display_analysis_results
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,11 +29,12 @@ if user_role not in ["professor", "admin", "teaching_assistant"]:
     show_error("You don't have permission to access this feature.")
     st.stop()
 
-# Check if Groq API key is set
-groq_api_key = os.getenv("GROQ_API_KEY")
-if not groq_api_key:
-    st.error("⚠️ Groq API key is not set. Please set the GROQ_API_KEY environment variable.")
-    st.info("You can set this by creating a .env file with GROQ_API_KEY=your_api_key or by setting it as an environment variable.")
+# Check if Groq API key is set in Streamlit secrets
+try:
+    groq_api_key = st.secrets["groq_api_key"]
+except Exception:
+    st.error("⚠️ Groq API key is not set in Streamlit secrets.")
+    st.info("Please set up your Groq API key in the Streamlit secrets configuration.")
     st.markdown("Get your API key from [Groq Console](https://console.groq.com/)")
     st.stop()
 
@@ -57,15 +59,12 @@ def analyze_question_with_ai(question_content, question_type):
         A dictionary with analysis results
     """
     try:
-        # Check if Groq API key is set
-        api_key = os.environ.get("GROQ_API_KEY")
-        if not api_key:
-            show_error("Groq API key not found. Please set the GROQ_API_KEY environment variable.")
-            logger.error("Groq API key not found")
+        # Get Groq client using our utility function
+        client = llm_utils.get_groq_client()
+        if not client:
+            show_error("Failed to initialize Groq client. Please check your API key configuration.")
+            logger.error("Failed to initialize Groq client")
             return None
-        
-        # Initialize Groq client
-        client = Groq(api_key=api_key)
         
         # Create prompt for analysis
         prompt = f"""
@@ -96,55 +95,51 @@ def analyze_question_with_ai(question_content, question_type):
                 temperature=0.2,
                 max_tokens=1000
             )
-        
-        # Extract and parse JSON response
-        response_text = response.choices[0].message.content
-        
-        # Find JSON in the response
-        start_idx = response_text.find('{')
-        end_idx = response_text.rfind('}') + 1
-        
-        if start_idx >= 0 and end_idx > start_idx:
-            json_str = response_text[start_idx:end_idx]
-            analysis = json.loads(json_str)
-            return analysis
-        else:
-            # Try to extract structured data if JSON parsing fails
-            analysis = {}
-            if "difficulty" in response_text:
-                try:
-                    difficulty_line = [line for line in response_text.split('\n') if "difficulty" in line.lower()][0]
-                    analysis["difficulty"] = float(difficulty_line.split(':')[1].strip().split()[0])
-                except:
-                    analysis["difficulty"] = 3.0
             
-            if "estimated_time" in response_text:
-                try:
-                    time_line = [line for line in response_text.split('\n') if "estimated_time" in line.lower()][0]
-                    analysis["estimated_time"] = int(time_line.split(':')[1].strip().split()[0])
-                except:
-                    analysis["estimated_time"] = 5
+            # Extract the response
+            response_text = response.choices[0].message.content
             
-            if "student_level" in response_text:
-                try:
-                    level_line = [line for line in response_text.split('\n') if "student_level" in line.lower()][0]
-                    analysis["student_level"] = level_line.split(':')[1].strip()
-                except:
-                    analysis["student_level"] = "Intermediate"
-            
-            if "improvements" in response_text:
-                try:
-                    improvements_section = response_text.split("improvements")[1].split("tags")[0]
-                    analysis["improvements"] = improvements_section.strip()
-                except:
-                    analysis["improvements"] = "No specific improvements suggested."
-            
-            if "tags" in response_text:
-                try:
-                    tags_section = response_text.split("tags")[1].strip()
-                    analysis["tags"] = tags_section.strip()
-                except:
-                    analysis["tags"] = "education, assessment"
+            # Try to parse as JSON
+            try:
+                analysis = json.loads(response_text)
+            except json.JSONDecodeError:
+                # If not valid JSON, try to extract structured data
+                analysis = {}
+                
+                if "difficulty" in response_text:
+                    try:
+                        difficulty_section = response_text.split("difficulty")[1].split("estimated_time")[0]
+                        analysis["difficulty"] = float(re.search(r'\d+\.?\d*', difficulty_section).group())
+                    except:
+                        analysis["difficulty"] = 3.0
+                
+                if "estimated_time" in response_text:
+                    try:
+                        time_section = response_text.split("estimated_time")[1].split("student_level")[0]
+                        analysis["estimated_time"] = int(re.search(r'\d+', time_section).group())
+                    except:
+                        analysis["estimated_time"] = 5
+                
+                if "student_level" in response_text:
+                    try:
+                        level_section = response_text.split("student_level")[1].split("improvements")[0]
+                        analysis["student_level"] = level_section.strip()
+                    except:
+                        analysis["student_level"] = "Intermediate"
+                
+                if "improvements" in response_text:
+                    try:
+                        improvements_section = response_text.split("improvements")[1].split("tags")[0]
+                        analysis["improvements"] = improvements_section.strip()
+                    except:
+                        analysis["improvements"] = "No specific improvements suggested."
+                
+                if "tags" in response_text:
+                    try:
+                        tags_section = response_text.split("tags")[1].strip()
+                        analysis["tags"] = tags_section.strip()
+                    except:
+                        analysis["tags"] = "education, assessment"
             
             return analysis
     
