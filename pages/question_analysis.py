@@ -30,13 +30,9 @@ if user_role not in ["professor", "admin", "teaching_assistant"]:
     st.stop()
 
 # Check if Groq API key is set in Streamlit secrets
-try:
-    groq_api_key = st.secrets["groq_api_key"]
-except Exception:
-    st.error("⚠️ Groq API key is not set in Streamlit secrets.")
-    st.info("Please set up your Groq API key in the Streamlit secrets configuration.")
-    st.markdown("Get your API key from [Groq Console](https://console.groq.com/)")
-    st.stop()
+
+groq_api_key = st.secrets["groq_api_key"]
+
 
 # Main content
 st.write("This tool uses AI to analyze questions, rate their difficulty, and suggest improvements based on the course's Intended Learning Outcomes (ILOs).")
@@ -153,18 +149,6 @@ def show_question_analysis():
     st.markdown("## Question Analysis")
     
     # Check if Groq API key is set in Streamlit secrets
-    try:
-        _ = st.secrets["groq_api_key"]
-    except Exception:
-        st.error("""
-        ⚠️ Groq API key is not set in Streamlit secrets.
-        
-        1. Get an API key from [Groq Console](https://console.groq.com/)
-        2. Add it to your Streamlit secrets configuration
-        3. For local development, create a .streamlit/secrets.toml file with:
-           groq_api_key = "your-api-key-here"
-        """)
-        return
     
     # Check if analyzing an existing question
     if "analyzing_question_id" in st.session_state:
