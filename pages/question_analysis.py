@@ -152,15 +152,17 @@ def show_question_analysis():
     """Display the question analysis page."""
     st.markdown("## Question Analysis")
     
-    # Check if Groq API key is set
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    # Check if Groq API key is set in Streamlit secrets
+    try:
+        _ = st.secrets["groq_api_key"]
+    except Exception:
         st.error("""
-        Groq API key not found. Please set the GROQ_API_KEY environment variable.
+        ⚠️ Groq API key is not set in Streamlit secrets.
         
-        1. Get an API key from https://console.groq.com/
-        2. Add it to your .env file: GROQ_API_KEY=your_api_key_here
-        3. Restart the application
+        1. Get an API key from [Groq Console](https://console.groq.com/)
+        2. Add it to your Streamlit secrets configuration
+        3. For local development, create a .streamlit/secrets.toml file with:
+           groq_api_key = "your-api-key-here"
         """)
         return
     
