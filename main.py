@@ -151,9 +151,6 @@ try:
                 elif add_option == "Question":
                     import pages.add as add_page
                     add_page.add_question()
-                elif add_option == "Question Analysis":
-                    import pages.question_analysis as qa_page
-                    qa_page.show_question_analysis()
                 elif add_option == "AI Question Generator":
                     import pages.question_generator as qg_page
                     qg_page.show_question_generator()

@@ -4,6 +4,7 @@ import json
 from typing import Dict, Any, Optional, Tuple, List
 from groq import Groq
 import streamlit as st
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,7 +50,7 @@ def analyze_question(
     
     try:
         # Construct the prompt
-        system_prompt = "You are an educational expert that analyzes academic questions and provides feedback."
+        system_prompt = "You are an educational expert that analyzes academic questions and provides feedback. Always respond in valid JSON format."
         
         user_prompt = f"""
         Analyze this academic question and provide feedback:
@@ -74,6 +75,8 @@ def analyze_question(
         
         Format your response as a JSON object with the following structure:
         {{"difficulty_rating": float, "improvement_suggestions": string}}
+        
+        IMPORTANT: Ensure your response is ONLY the JSON object, with no additional text before or after.
         """
         
         # Call the Groq API with LLaMA 3 model
@@ -90,34 +93,53 @@ def analyze_question(
         )
         
         # Extract and parse the response
-        response_text = response.choices[0].message.content
+        response_text = response.choices[0].message.content.strip()
         logger.info(f"Received response from Groq API: {response_text[:100]}...")
         
         # Try to extract JSON from the response
         try:
-            # Look for JSON pattern in the response
-            import re
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                result = json.loads(json_str)
-                
-                difficulty_rating = result.get("difficulty_rating")
-                improvement_suggestions = result.get("improvement_suggestions")
-                
-                # Validate difficulty rating
-                if difficulty_rating is not None:
-                    difficulty_rating = float(difficulty_rating)
-                    difficulty_rating = max(1.0, min(5.0, difficulty_rating))  # Ensure it's between 1 and 5
-                
-                return difficulty_rating, improvement_suggestions
+            # Clean the response text to ensure it's valid JSON
+            # Remove any markdown code block markers
+            response_text = re.sub(r'```json\s*|\s*```', '', response_text)
+            # Remove any leading/trailing whitespace
+            response_text = response_text.strip()
+            
+            # Parse the JSON
+            result = json.loads(response_text)
+            
+            difficulty_rating = result.get("difficulty_rating")
+            improvement_suggestions = result.get("improvement_suggestions")
+            
+            # Validate difficulty rating
+            if difficulty_rating is not None:
+                difficulty_rating = float(difficulty_rating)
+                difficulty_rating = max(1.0, min(5.0, difficulty_rating))  # Ensure it's between 1 and 5
             else:
-                logger.error("Could not find JSON in LLM response")
-                # If we can't parse JSON, return the full response as the suggestion
-                return None, response_text
+                logger.error("No difficulty rating found in response")
+                return None, "Error: No difficulty rating provided in analysis"
+            
+            if not improvement_suggestions:
+                improvement_suggestions = "No specific improvement suggestions provided."
+            
+            return difficulty_rating, improvement_suggestions
+            
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON from LLM response: {e}")
-            return None, response_text
+            logger.error(f"Response text was: {response_text}")
+            
+            # Try to extract just the JSON part using regex
+            try:
+                json_match = re.search(r'\{[^{}]*\}', response_text)
+                if json_match:
+                    result = json.loads(json_match.group(0))
+                    difficulty_rating = float(result.get("difficulty_rating", 3.0))
+                    improvement_suggestions = result.get("improvement_suggestions", "No specific improvement suggestions provided.")
+                    return difficulty_rating, improvement_suggestions
+            except Exception as nested_e:
+                logger.error(f"Failed to extract JSON using regex: {nested_e}")
+            
+            # If all parsing attempts fail, return the raw response as improvement suggestions
+            return 3.0, f"Analysis (raw): {response_text}"
         
     except Exception as e:
         logger.error(f"Error calling Groq API: {str(e)}")
